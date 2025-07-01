@@ -12,13 +12,16 @@ ufw default allow outgoing
 ufw allow ssh
 ufw enable
 
-# 3. Tambahkan user non-root
+# 3. Tambahkan user non-root + password random
 read -p "Masukkan nama user baru (misal adminbot): " NEW_USER
-adduser $NEW_USER
+PASSWD=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
+
+adduser --disabled-password --gecos "" "$NEW_USER"
+echo "${NEW_USER}:${PASSWD}" | chpasswd
 usermod -aG sudo $NEW_USER
 
 # 4. Ganti port SSH & nonaktifkan root login
-read -p "Masukkan port SSH baru (misal 2222): " NEW_PORT
+read -p "Masukkan port SSH baru (misal 6969): " NEW_PORT
 sed -i "s/#Port 22/Port $NEW_PORT/" /etc/ssh/sshd_config
 sed -i "s/Port 22/Port $NEW_PORT/" /etc/ssh/sshd_config
 sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
@@ -44,7 +47,11 @@ netfilter-persistent save
 pip install --upgrade pip
 pip install python-binance
 
-# 9. Info akhir
+# 9. Output akhir
+IPADDR=$(curl -s ifconfig.me)
 echo "✅ SETUP SELESAI!"
-echo "➡️ Gunakan SSH dengan user baru:"
-echo "ssh $NEW_USER@$(curl -s ifconfig.me) -p $NEW_PORT"
+echo "➡️ username : $NEW_USER"
+echo "➡️ password : $PASSWD"
+echo "ssh $NEW_USER@$IPADDR -p $NEW_PORT"
+
+#RUN SERVER : bash <(curl -s https://raw.githubusercontent.com/ayoungcyberteam/Binance/refs/heads/main/server.sh)
