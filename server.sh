@@ -1,0 +1,50 @@
+#!/bin/bash
+
+echo "🛠️ MULAI SETUP VPS BOT BINANCE..."
+
+# 1. Update & install tools dasar
+apt update && apt upgrade -y
+apt install -y curl wget git ufw fail2ban htop unzip net-tools python3 python3-pip tmux iptables-persistent
+
+# 2. Setup firewall UFW
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw enable
+
+# 3. Tambahkan user non-root
+read -p "Masukkan nama user baru (misal adminbot): " NEW_USER
+adduser $NEW_USER
+usermod -aG sudo $NEW_USER
+
+# 4. Ganti port SSH & nonaktifkan root login
+read -p "Masukkan port SSH baru (misal 2222): " NEW_PORT
+sed -i "s/#Port 22/Port $NEW_PORT/" /etc/ssh/sshd_config
+sed -i "s/Port 22/Port $NEW_PORT/" /etc/ssh/sshd_config
+sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+ufw allow $NEW_PORT/tcp
+systemctl restart sshd
+
+# 5. Aktifkan Fail2Ban
+systemctl enable fail2ban
+systemctl start fail2ban
+
+# 6. Blok ping/ICMP (stealth)
+echo "net.ipv4.icmp_echo_ignore_all = 1" >> /etc/sysctl.conf
+sysctl -p
+
+# 7. Tambahkan aturan iptables anti scan/DDoS ringan
+iptables -A INPUT -p tcp --tcp-flags ALL NONE -j DROP
+iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
+iptables -A INPUT -p tcp --syn --dport 443 -m connlimit --connlimit-above 50 -j REJECT
+netfilter-persistent save
+
+# 8. Install library bot Binance
+pip install --upgrade pip
+pip install python-binance
+
+# 9. Info akhir
+echo "✅ SETUP SELESAI!"
+echo "➡️ Gunakan SSH dengan user baru:"
+echo "ssh $NEW_USER@$(curl -s ifconfig.me) -p $NEW_PORT"
