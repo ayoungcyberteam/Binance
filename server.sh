@@ -4,7 +4,7 @@ echo "🛠️ MULAI SETUP VPS BOT BINANCE..."
 
 # 1. Update & install tools dasar
 apt update && apt upgrade -y
-apt install -y curl wget git ufw fail2ban htop unzip net-tools python3 python3-pip tmux iptables-persistent
+apt install -y curl wget git ufw fail2ban htop unzip net-tools python3 python3-pip tmux iptables-persistent mariadb-client python3-venv
 
 # 2. Setup firewall UFW
 ufw default deny incoming
@@ -25,7 +25,8 @@ read -p "Masukkan port SSH baru (misal 6969): " NEW_PORT
 sed -i "s/#Port 22/Port $NEW_PORT/" /etc/ssh/sshd_config
 sed -i "s/Port 22/Port $NEW_PORT/" /etc/ssh/sshd_config
 sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 ufw allow $NEW_PORT/tcp
 systemctl restart sshd
 
@@ -43,15 +44,22 @@ iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
 iptables -A INPUT -p tcp --syn --dport 443 -m connlimit --connlimit-above 50 -j REJECT
 netfilter-persistent save
 
-# 8. Install library bot Binance
+# 8. Install library bot Binance & koneksi database
 pip install --upgrade pip
-pip install python-binance
+pip install python-binance mysql-connector-python pandas requests
 
-# 9. Output akhir
+# 9. Buat virtualenv untuk bot (opsional tapi rapi)
+su - $NEW_USER -c "python3 -m venv ~/binance-env"
+su - $NEW_USER -c "~/binance-env/bin/pip install --upgrade pip"
+su - $NEW_USER -c "~/binance-env/bin/pip install python-binance mysql-connector-python pandas requests"
+
+# 10. Output akhir
 IPADDR=$(curl -s ifconfig.me)
 echo "✅ SETUP SELESAI!"
 echo "➡️ username : $NEW_USER"
 echo "➡️ password : $PASSWD"
-echo "ssh $NEW_USER@$IPADDR -p $NEW_PORT"
+echo "➡️ SSH     : ssh $NEW_USER@$IPADDR -p $NEW_PORT"
+echo "➡️ Python ENV : /home/$NEW_USER/binance-env"
+echo "➡️ Bot tinggal jalankan di virtualenv tersebut."
 
-#RUN SERVER : bash <(curl -s https://raw.githubusercontent.com/ayoungcyberteam/Binance/refs/heads/main/server.sh)
+echo "#RUN SERVER : bash <(curl -s https://raw.githubusercontent.com/ayoungcyberteam/Binance/refs/heads/main/server.sh)"
